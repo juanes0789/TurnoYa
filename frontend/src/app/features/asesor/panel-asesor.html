@@ -1,0 +1,102 @@
+@if (error(); as mensaje) {
+  <div class="banner-error" role="alert" data-testid="banner-error">
+    <span>{{ mensaje }}</span>
+    <button type="button" class="banner-error__cerrar" aria-label="Cerrar aviso" (click)="descartarError()">✕</button>
+  </div>
+}
+
+<section class="panel">
+  <article class="tarjeta atencion">
+    <p class="etiqueta">Atendiendo ahora</p>
+
+    @if (actual(); as turno) {
+      <div class="atencion__numero" data-testid="turno-actual">
+        <app-numero-turno [numero]="turno.numero" tamano="grande" />
+      </div>
+      <p class="atencion__nota">atendido {{ hora(turno.horaAtencion) }}</p>
+    } @else if (cargando()) {
+      <p class="atencion__vacio">Cargando…</p>
+    } @else {
+      <p class="atencion__vacio" data-testid="sin-turno-actual">Aún no se ha atendido ningún turno</p>
+    }
+
+    <button
+      type="button"
+      class="btn btn-primario llamar"
+      data-testid="btn-llamar-siguiente"
+      [disabled]="!puedeLlamar()"
+      (click)="llamarSiguiente()"
+    >
+      {{ llamando() ? 'Llamando…' : 'Llamar siguiente' }}
+    </button>
+
+    <dl class="promedio">
+      <dt class="etiqueta">Espera promedio</dt>
+      <dd class="promedio__valor" data-testid="espera-promedio">
+        {{ promedio() }}<span class="promedio__unidad"> min</span>
+      </dd>
+    </dl>
+  </article>
+
+  <article class="tarjeta fila">
+    <header class="fila__cabecera">
+      <h2 class="fila__titulo">En espera ({{ enEspera().length }})</h2>
+      <span class="fila__nota">orden de llegada</span>
+    </header>
+
+    @if (enEspera().length > 0) {
+      <ol class="lista" data-testid="lista-espera">
+        @for (turno of enEspera(); track turno.numero; let i = $index) {
+          <li class="item" [class.item--siguiente]="i === 0" data-testid="item-espera">
+            <app-numero-turno [numero]="turno.numero" />
+
+            <span class="item__hora">{{ hora(turno.horaSolicitud) }}</span>
+
+            <span class="item__acciones">
+              @if (i === 0) {
+                <span class="chip">siguiente</span>
+              }
+
+              @if (confirmando() === turno.numero) {
+                <span class="confirmar">
+                  <span class="confirmar__texto">¿No se presentó?</span>
+                  <button
+                    type="button"
+                    class="btn btn-secundario confirmar__si"
+                    [attr.data-testid]="'btn-confirmar-cancelar-' + turno.numero"
+                    [disabled]="cancelando() === turno.numero"
+                    (click)="cancelar(turno.numero)"
+                  >
+                    Sí, cancelar
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-secundario"
+                    data-testid="btn-descartar-cancelar"
+                    (click)="descartarConfirmacion()"
+                  >
+                    No
+                  </button>
+                </span>
+              } @else {
+                <button
+                  type="button"
+                  class="icono"
+                  [attr.aria-label]="'Cancelar el turno ' + turno.numero"
+                  [attr.data-testid]="'btn-cancelar-' + turno.numero"
+                  (click)="pedirConfirmacion(turno.numero)"
+                >
+                  ✕
+                </button>
+              }
+            </span>
+          </li>
+        }
+      </ol>
+    } @else if (cargando()) {
+      <p class="vacio">Cargando la fila…</p>
+    } @else {
+      <p class="vacio" data-testid="fila-vacia">No hay turnos en espera</p>
+    }
+  </article>
+</section>
