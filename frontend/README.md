@@ -3,7 +3,7 @@
 Angular 21 (standalone, zoneless, signals) · pruebas con Vitest.
 
 - `/turno`: kiosco del cliente (pedir, consultar y cancelar turno).
-- `/asesor`: panel del asesor (a cargo de Juan Felipe).
+- `/asesor`: panel del asesor (llamar siguiente, fila en espera, espera promedio, cancelar por no presentarse).
 
 Diseño: [`docs/specs/2026-10-29-front-interfaz-design.md`](../docs/specs/2026-10-29-front-interfaz-design.md) · Contrato: [`docs/api.md`](../docs/api.md)
 
@@ -44,7 +44,7 @@ src/app/
 ├── shared/        # header, numero-turno (006)
 └── features/
     ├── turno/     # /turno — PedirTurno
-    └── asesor/    # /asesor — PanelAsesor (Juan Felipe)
+    └── asesor/    # /asesor — PanelAsesor
 ```
 
 Las vistas solo inyectan `TURNO_API`; nunca `TurnoMock` ni `TurnoHttp` directamente.
@@ -52,3 +52,7 @@ Las vistas solo inyectan `TURNO_API`; nunca `TurnoMock` ni `TurnoHttp` directame
 ### `data-testid` del kiosco (para el equipo de pruebas)
 
 `pedir`, `mi-turno`, `calculando`, `delante`, `espera`, `cancelar`, `confirmacion`, `confirmar-cancelar`, `descartar-cancelar`, `llamado`, `cancelado`, `otro`, `banner-error`.
+
+### `data-testid` del panel del asesor
+
+`actual`, `sin-actual`, `llamar`, `promedio`, `titulo-espera`, `vacia`, `fila-{numero}`, `cancelar-{numero}`, `confirmacion`, `confirmar-cancelar`, `descartar-cancelar`, `banner-error`.

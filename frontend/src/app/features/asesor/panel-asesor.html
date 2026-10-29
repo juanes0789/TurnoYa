@@ -1,0 +1,82 @@
+@if (mensajeError(); as mensaje) {
+  <p class="banner-error" data-testid="banner-error" role="alert">{{ mensaje }}</p>
+}
+
+<div class="panel">
+  <section class="tarjeta atencion">
+    <p class="etiqueta">Atendiendo ahora</p>
+    @if (actual(); as turno) {
+      <app-numero-turno data-testid="actual" [numero]="turno.numero" tamano="grande" />
+    } @else {
+      <p class="ayuda" data-testid="sin-actual">Aún no se ha atendido ningún turno</p>
+    }
+
+    <button
+      type="button"
+      class="btn btn-primario btn-llamar"
+      data-testid="llamar"
+      [disabled]="llamando() || filaVacia()"
+      (click)="llamar()"
+    >
+      {{ llamando() ? 'Llamando…' : 'Llamar siguiente' }}
+    </button>
+
+    <div class="promedio" data-testid="promedio">
+      <span class="etiqueta">Espera promedio</span>
+      <strong>{{ promedio() }} min</strong>
+    </div>
+  </section>
+
+  <section class="tarjeta fila">
+    <h2 data-testid="titulo-espera">En espera ({{ enEspera().length }})</h2>
+
+    @if (filaVacia()) {
+      <p class="ayuda vacia" data-testid="vacia">No hay turnos en espera</p>
+    } @else {
+      <ol>
+        @for (turno of enEspera(); track turno.numero; let primero = $first) {
+          <li [attr.data-testid]="'fila-' + turno.numero" [class.siguiente]="primero">
+            @if (confirmandoCancelar() === turno.numero) {
+              <div class="confirmacion" data-testid="confirmacion">
+                <span>¿Cancelar el turno {{ formatear(turno.numero) }}?</span>
+                <button
+                  type="button"
+                  class="btn btn-peligro"
+                  data-testid="confirmar-cancelar"
+                  (click)="confirmarCancelar()"
+                >
+                  Sí
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-secundario"
+                  data-testid="descartar-cancelar"
+                  (click)="descartarCancelar()"
+                >
+                  No
+                </button>
+              </div>
+            } @else {
+              <app-numero-turno [numero]="turno.numero" />
+              <span class="hora">{{ turno.horaSolicitud | date: 'HH:mm' }}</span>
+              @if (primero) {
+                <span class="chip">siguiente</span>
+              }
+              <button
+                type="button"
+                class="quitar"
+                [attr.data-testid]="'cancelar-' + turno.numero"
+                [attr.aria-label]="'No se presentó: cancelar el turno ' + formatear(turno.numero)"
+                title="No se presentó"
+                [disabled]="cancelando() !== null"
+                (click)="pedirCancelar(turno.numero)"
+              >
+                ✕
+              </button>
+            }
+          </li>
+        }
+      </ol>
+    }
+  </section>
+</div>
