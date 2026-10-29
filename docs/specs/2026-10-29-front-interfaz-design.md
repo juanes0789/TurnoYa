@@ -40,7 +40,7 @@ Dos vistas en Angular que cumplan el reto: una para **pedir turno** y otra para 
 │  Personas delante:  4        │
 │  Espera estimada:  ~49 min   │
 │                              │
-│     [ Pedir otro turno ]     │
+│     [ Cancelar mi turno ]    │
 └──────────────────────────────┘
 ```
 
@@ -49,8 +49,10 @@ Dos vistas en Angular que cumplan el reto: una para **pedir turno** y otra para 
 | Inicial | Botón grande "Pedir turno". |
 | Pidiendo | Botón deshabilitado con "Asignando…" (evita doble clic = doble turno). |
 | Con turno | Número grande, personas delante y espera estimada. Se refresca cada 3 s. |
-| Le llamaron | La tarjeta cambia a "¡Es tu turno!" en verde. |
-| Error | Banner ámbar "No se pudo asignar el turno, intenta de nuevo". |
+| Le llamaron | La tarjeta cambia a "¡Es tu turno!" en verde; ya no se puede cancelar. |
+| Confirmar cancelación | "Cancelar mi turno" pide confirmación ("¿Seguro? Perderás tu lugar en la fila"). |
+| Cancelado | "Tu turno 011 fue cancelado" + botón "Pedir otro turno". |
+| Error | Banner ámbar "No se pudo asignar el turno, intenta de nuevo" (o el `mensaje` del 409 al cancelar). |
 
 - **Personas delante** = cantidad de turnos en `GET /turnos/en-espera` que están antes del mío.
 - **Espera estimada** = personas delante × espera promedio (redondeado a minutos). Es una estimación del front, no la calcula el back.
@@ -60,11 +62,11 @@ Dos vistas en Angular que cumplan el reto: una para **pedir turno** y otra para 
 
 ```
 ┌───────────────────┬──────────────────────┐
-│ Atendiendo ahora  │ En espera (4)        │
-│                   │ ▸ 006  08:25 siguiente│
-│       005         │   008  08:38         │
-│                   │   009  08:41         │
-│ [LLAMAR SIGUIENTE]│   010  08:45         │
+│ Atendiendo ahora  │ En espera (4)            │
+│                   │ ▸ 006  08:25 siguiente ✕ │
+│       005         │   008  08:38           ✕ │
+│                   │   009  08:41           ✕ │
+│ [LLAMAR SIGUIENTE]│   010  08:45           ✕ │
 │                   │                      │
 │ Espera promedio   │                      │
 │   12.2 min        │                      │
@@ -78,8 +80,10 @@ Dos vistas en Angular que cumplan el reto: una para **pedir turno** y otra para 
 | Fila vacía | Botón deshabilitado + "No hay turnos en espera" en la lista. |
 | 409 del back | Banner ámbar con el `mensaje` del back; la vista se refresca. |
 | Sin turno actual | "Aún no se ha atendido ningún turno" (`/turnos/actual` → 204). |
+| Cancelar turno | Botón ✕ en cada fila ("No se presentó"), con confirmación. El turno sale de la lista. |
+| 409/404 al cancelar | Banner ámbar con el `mensaje` del back (p. ej. lo atendieron mientras tanto); la vista se refresca. |
 
-La lista y el promedio se refrescan cada 3 s y justo después de llamar al siguiente.
+La lista y el promedio se refrescan cada 3 s y justo después de llamar al siguiente o cancelar.
 
 ## Estructura en Angular
 
@@ -110,7 +114,8 @@ frontend/src/app/
 
 - Atendidos 1–5 (actual: 5), en espera 6, 8, 9, 10, promedio 12.2 min, próximo número 11.
 - `siguiente()` con la fila vacía lanza el mismo error que el 409.
-- Números nuevos = máximo + 1; nunca reutiliza el 7.
+- `cancelar(numero)` solo sobre `PENDIENTE`; si no, el mismo error que el 409 (o 404 si no existe).
+- Números nuevos = máximo + 1; nunca reutiliza el 7 ni un número cancelado.
 
 ## Pruebas del front
 
@@ -119,6 +124,9 @@ frontend/src/app/
 | El mock arranca con en espera = [6, 8, 9, 10] y promedio 12.2 | `turno-mock.service.spec` |
 | `siguiente()` atiende en orden 6 → 8 → 9 → 10 y luego falla con fila vacía | `turno-mock.service.spec` |
 | `pedirTurno()` asigna 11, 12… sin repetir | `turno-mock.service.spec` |
+| `cancelar(8)` saca el 8 de la fila; el siguiente pedido sigue siendo un número nuevo | `turno-mock.service.spec` |
+| `cancelar()` de un turno atendido o ya cancelado falla y no cambia nada | `turno-mock.service.spec` |
+| Cancelar desde el panel quita el turno de la lista; desde el kiosco muestra "cancelado" | `asesor.component.spec`, `turno.component.spec` |
 | Botón "Llamar siguiente" deshabilitado con fila vacía | `asesor.component.spec` |
 | Banner visible ante 409 | `asesor.component.spec` |
 | Doble clic en "Pedir turno" solo crea un turno | `turno.component.spec` |
