@@ -3,17 +3,19 @@ package com.turnoYa.Backend.Service;
 import com.turnoYa.Backend.Entity.EstadoTurno;
 import com.turnoYa.Backend.Entity.Turno;
 import com.turnoYa.Backend.Exception.NoHayTurnosEnEsperaException;
+import com.turnoYa.Backend.Exception.TurnoNoEncontradoException;
+import com.turnoYa.Backend.Exception.TurnoNoPendienteException;
 import com.turnoYa.Backend.Repository.TurnoRepository;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class TurnoServiceImpl implements TurnoService {
 
-    private static final String TURNO_PREFIX = "T-";
     private final TurnoRepository turnoRepository;
 
     public TurnoServiceImpl(TurnoRepository turnoRepository) {
@@ -23,14 +25,14 @@ public class TurnoServiceImpl implements TurnoService {
     @Override
     @Transactional
     public synchronized Turno crearTurno() {
-        int siguienteSecuencia = turnoRepository.findTopByOrderByIdDesc()
-                .map(turno -> extraerSecuencia(turno.getNumero()) + 1)
+        int siguienteSecuencia = turnoRepository.findTopByOrderByNumeroDesc()
+                .map(turno -> turno.getNumero() + 1)
                 .orElse(1);
 
         Turno nuevoTurno = Turno.builder()
-                .numero(formatearNumeroTurno(siguienteSecuencia))
-                .horaLlegada(LocalDateTime.now())
-                .estado(EstadoTurno.EN_ESPERA)
+                .numero(siguienteSecuencia)
+                .horaSolicitud(LocalDateTime.now())
+                .estado(EstadoTurno.PENDIENTE)
                 .build();
 
         return turnoRepository.save(nuevoTurno);
@@ -39,48 +41,62 @@ public class TurnoServiceImpl implements TurnoService {
     @Override
     @Transactional
     public Turno llamarSiguienteTurno() {
-        Turno siguienteTurno = turnoRepository.findFirstByEstadoOrderByHoraLlegadaAscIdAsc(EstadoTurno.EN_ESPERA)
+        Turno siguienteTurno = turnoRepository.findFirstByEstadoOrderByHoraSolicitudAscNumeroAsc(EstadoTurno.PENDIENTE)
                 .orElseThrow(() -> new NoHayTurnosEnEsperaException("No hay turnos en espera"));
 
-        siguienteTurno.setEstado(EstadoTurno.LLAMADO);
-        siguienteTurno.setHoraLlamado(LocalDateTime.now());
+        siguienteTurno.setEstado(EstadoTurno.ATENDIDO);
+        siguienteTurno.setHoraAtencion(LocalDateTime.now());
 
         return turnoRepository.save(siguienteTurno);
     }
 
     @Override
+    @Transactional
+    public Turno cancelarTurno(Integer numero) {
+        Turno turno = turnoRepository.findByNumero(numero)
+                .orElseThrow(() -> new TurnoNoEncontradoException(numero));
+
+        if (turno.getEstado() != EstadoTurno.PENDIENTE) {
+            throw new TurnoNoPendienteException(numero);
+        }
+
+        turno.setEstado(EstadoTurno.CANCELADO);
+        return turnoRepository.save(turno);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Turno> obtenerPorNumero(Integer numero) {
+        return turnoRepository.findByNumero(numero);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Turno> obtenerTurnoActual() {
+        return turnoRepository.findTopByEstadoOrderByHoraAtencionDescNumeroDesc(EstadoTurno.ATENDIDO);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<Turno> obtenerTurnosEnEspera() {
-        return turnoRepository.findByEstadoOrderByHoraLlegadaAscIdAsc(EstadoTurno.EN_ESPERA);
+        return turnoRepository.findByEstadoOrderByHoraSolicitudAscNumeroAsc(EstadoTurno.PENDIENTE);
     }
 
     @Override
     @Transactional(readOnly = true)
     public double calcularEsperaPromedioEnMinutos() {
-        List<Turno> turnosLlamados = turnoRepository.findByEstadoAndHoraLlamadoIsNotNull(EstadoTurno.LLAMADO);
+        List<Turno> turnosLlamados = turnoRepository.findByEstadoAndHoraAtencionIsNotNull(EstadoTurno.ATENDIDO);
 
         if (turnosLlamados.isEmpty()) {
             return 0.0;
         }
 
         double minutosPromedio = turnosLlamados.stream()
-                .mapToLong(turno -> Duration.between(turno.getHoraLlegada(), turno.getHoraLlamado()).toMillis())
+                .mapToLong(turno -> Duration.between(turno.getHoraSolicitud(), turno.getHoraAtencion()).toMillis())
                 .average()
                 .orElse(0.0) / 60000.0;
 
-        return Math.round(minutosPromedio * 100.0) / 100.0;
-    }
-
-    private int extraerSecuencia(String numeroTurno) {
-        if (numeroTurno == null || !numeroTurno.startsWith(TURNO_PREFIX)) {
-            throw new IllegalStateException("Formato de numero de turno invalido: " + numeroTurno);
-        }
-
-        return Integer.parseInt(numeroTurno.substring(TURNO_PREFIX.length()));
-    }
-
-    private String formatearNumeroTurno(int secuencia) {
-        return String.format("%s%03d", TURNO_PREFIX, secuencia);
+        return Math.round(minutosPromedio * 10.0) / 10.0;
     }
 }
 

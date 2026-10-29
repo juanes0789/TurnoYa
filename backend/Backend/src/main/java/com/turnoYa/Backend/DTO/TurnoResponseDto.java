@@ -6,9 +6,9 @@ import lombok.Builder;
 @Builder
 public record TurnoResponseDto(
         Long id,
-        String numero,
-        LocalDateTime horaLlegada,
-        LocalDateTime horaLlamado,
+        Integer numero,
+        LocalDateTime horaSolicitud,
+        LocalDateTime horaAtencion,
         String estado
 ) {
 }

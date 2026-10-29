@@ -14,5 +14,17 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ErrorResponseDto(ex.getMessage()));
     }
+
+    @ExceptionHandler(TurnoNoEncontradoException.class)
+    public ResponseEntity<ErrorResponseDto> handleTurnoNoEncontrado(TurnoNoEncontradoException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponseDto(ex.getMessage()));
+    }
+
+    @ExceptionHandler(TurnoNoPendienteException.class)
+    public ResponseEntity<ErrorResponseDto> handleTurnoNoPendiente(TurnoNoPendienteException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponseDto(ex.getMessage()));
+    }
 }
 

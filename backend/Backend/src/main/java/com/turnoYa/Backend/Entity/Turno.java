@@ -35,13 +35,13 @@ public class Turno {
     private Long id;
 
     @Column(nullable = false, unique = true, length = 20)
-    private String numero;
+    private Integer numero;
 
     @Column(nullable = false)
-    private LocalDateTime horaLlegada;
+    private LocalDateTime horaSolicitud;
 
     @Column
-    private LocalDateTime horaLlamado;
+    private LocalDateTime horaAtencion;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)

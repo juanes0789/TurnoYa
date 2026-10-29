@@ -12,8 +12,8 @@ public final class TurnoMapper {
         return TurnoResponseDto.builder()
                 .id(turno.getId())
                 .numero(turno.getNumero())
-                .horaLlegada(turno.getHoraLlegada())
-                .horaLlamado(turno.getHoraLlamado())
+                .horaSolicitud(turno.getHoraSolicitud())
+                .horaAtencion(turno.getHoraAtencion())
                 .estado(turno.getEstado().name())
                 .build();
     }
