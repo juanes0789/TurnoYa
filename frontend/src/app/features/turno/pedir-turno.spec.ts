@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Observable, throwError } from 'rxjs';
+import { Observable, Subject, throwError } from 'rxjs';
 import { RELOJ, TURNO_API } from '../../core/turno-api';
 import { TurnoMock } from '../../core/turno-mock';
 import { Turno, TurnoError } from '../../core/turno.model';
@@ -130,7 +130,9 @@ describe('PedirTurno', () => {
   });
 
   it('si pedir falla muestra "No se pudo asignar el turno, intenta de nuevo"', async () => {
-    vi.spyOn(mock, 'pedirTurno').mockReturnValue(throwError(() => new TurnoError(0, 'Sin conexión con el servidor')));
+    vi.spyOn(mock, 'pedirTurno').mockReturnValue(
+      throwError(() => new TurnoError(0, 'Sin conexión con el servidor')),
+    );
     await crear();
 
     await click('pedir');
@@ -183,5 +185,79 @@ describe('PedirTurno', () => {
     await click('confirmar-cancelar');
     await click('otro');
     expect(texto('pedir')).toBe('Pedir turno');
+  });
+
+  describe('revisión final', () => {
+    const pendiente = (numero: number): Turno => ({
+      numero,
+      horaSolicitud: '2026-10-29T09:00:00',
+      horaAtencion: null,
+      estado: 'PENDIENTE',
+    });
+
+    it('una respuesta vieja del refresco no pisa el turno nuevo', async () => {
+      await crear();
+      await click('pedir');
+      const lento = new Subject<Turno>();
+      vi.spyOn(mock, 'consultar').mockReturnValueOnce(lento);
+      fixture.componentInstance.refrescar();
+
+      await click('cancelar');
+      await click('confirmar-cancelar');
+      await click('otro');
+      await click('pedir');
+      lento.next(pendiente(11));
+      lento.complete();
+      await fixture.whenStable();
+
+      expect(texto('mi-turno')).toMatch(/^Tu turno es\s*012$/);
+      expect(texto('delante')).toBe('Personas delante: 4');
+    });
+
+    it('una respuesta vieja PENDIENTE no deshace la cancelación', async () => {
+      await crear();
+      await click('pedir');
+      const lento = new Subject<Turno>();
+      vi.spyOn(mock, 'consultar').mockReturnValueOnce(lento);
+      fixture.componentInstance.refrescar();
+
+      await click('cancelar');
+      await click('confirmar-cancelar');
+      lento.next(pendiente(11));
+      lento.complete();
+      await fixture.whenStable();
+
+      expect(texto('cancelado')).toBe('Tu turno 011 fue cancelado');
+    });
+
+    it('un 404 en en-espera no reinicia el kiosco', async () => {
+      await crear();
+      await click('pedir');
+      vi.spyOn(mock, 'enEspera').mockReturnValueOnce(
+        throwError(() => new TurnoError(404, 'No encontrado')),
+      );
+
+      await refrescar();
+
+      expect(texto('mi-turno')).toMatch(/^Tu turno es\s*011$/);
+      expect(texto('banner-error')).toBe('No encontrado');
+      expect(sessionStorage.getItem(CLAVE_STORAGE)).toBe('11');
+    });
+
+    it('"sin conexión" al cancelar se quita cuando vuelve la conexión', async () => {
+      await crear();
+      await click('pedir');
+      const sinConexion = () => throwError(() => new TurnoError(0, 'Sin conexión con el servidor'));
+      vi.spyOn(mock, 'cancelar').mockReturnValueOnce(sinConexion());
+      vi.spyOn(mock, 'consultar').mockReturnValueOnce(sinConexion());
+
+      await click('cancelar');
+      await click('confirmar-cancelar');
+      expect(texto('banner-error')).toBe('Sin conexión con el servidor');
+
+      await refrescar();
+      expect(el('banner-error')).toBeNull();
+      expect(texto('mi-turno')).toMatch(/^Tu turno es\s*011$/);
+    });
   });
 });

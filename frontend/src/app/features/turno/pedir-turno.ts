@@ -1,8 +1,21 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { forkJoin, interval } from 'rxjs';
+import {
+  EMPTY,
+  Observable,
+  Subject,
+  catchError,
+  filter,
+  forkJoin,
+  interval,
+  map,
+  merge,
+  of,
+  switchMap,
+  throwError,
+} from 'rxjs';
 import { INTERVALO_REFRESCO_MS, TURNO_API } from '../../core/turno-api';
-import { Turno, TurnoError } from '../../core/turno.model';
+import { EsperaPromedio, Turno, TurnoError } from '../../core/turno.model';
 import { NumeroTurno, formatearNumero } from '../../shared/numero-turno/numero-turno';
 
 export const CLAVE_STORAGE = 'turnoya.miTurno';
@@ -52,18 +65,25 @@ export class PedirTurno {
   protected readonly mensajeError = computed(() => this.error() ?? this.errorRefresco());
   protected readonly formatear = formatearNumero;
 
+  /** Refrescos pedidos a mano; se mezclan con el polling en un solo flujo. */
+  private readonly refrescos = new Subject<void>();
+  /** Sube al pedir, cancelar o reiniciar: una respuesta de un refresco anterior ya no se aplica. */
+  private version = 0;
+
   constructor() {
+    merge(interval(INTERVALO_REFRESCO_MS).pipe(filter(() => this.debePolling())), this.refrescos)
+      .pipe(
+        // switchMap cancela el refresco anterior si sigue en vuelo (back lento).
+        switchMap(() => this.consultarEstado()),
+        takeUntilDestroyed(),
+      )
+      .subscribe((resultado) => this.aplicar(resultado));
+
     const guardado = leerGuardado();
     if (guardado !== null && Number.isInteger(guardado)) {
       this.numero.set(guardado);
       this.refrescar();
     }
-    interval(INTERVALO_REFRESCO_MS)
-      .pipe(takeUntilDestroyed())
-      .subscribe(() => {
-        const estado = this.miTurno()?.estado;
-        if (this.numero() !== null && (estado === undefined || estado === 'PENDIENTE')) this.refrescar();
-      });
   }
 
   pedir(): void {
@@ -73,6 +93,7 @@ export class PedirTurno {
     this.api.pedirTurno().subscribe({
       next: (turno) => {
         this.pidiendo.set(false);
+        this.version++;
         this.numero.set(turno.numero);
         this.miTurno.set(turno);
         guardar(turno.numero);
@@ -86,42 +107,28 @@ export class PedirTurno {
   }
 
   refrescar(): void {
-    const numero = this.numero();
-    if (numero === null) return;
-    forkJoin({
-      turno: this.api.consultar(numero),
-      enEspera: this.api.enEspera(),
-      promedio: this.api.esperaPromedio(),
-    }).subscribe({
-      next: ({ turno, enEspera, promedio }) => {
-        this.miTurno.set(turno);
-        this.delante.set(Math.max(0, enEspera.findIndex((t) => t.numero === numero)));
-        this.promedio.set(promedio.minutos);
-        this.errorRefresco.set(null);
-      },
-      error: (err: TurnoError) => {
-        // 404: el back ya no conoce el número (p. ej. se reinició) → empezar de nuevo.
-        if (err.status === 404) this.reiniciar();
-        else this.errorRefresco.set(err.message);
-      },
-    });
+    this.refrescos.next();
   }
 
   cancelar(): void {
     const numero = this.numero();
     if (numero === null) return;
+    this.version++;
     this.confirmando.set(false);
     this.error.set(null);
     this.api.cancelar(numero).subscribe({
       next: (turno) => this.miTurno.set(turno),
       error: (err: TurnoError) => {
-        this.error.set(err.message);
+        // Sin conexión es transitorio: va al error de refresco para que se quite al reconectar.
+        if (err.status === 0) this.errorRefresco.set(err.message);
+        else this.error.set(err.message);
         this.refrescar();
       },
     });
   }
 
   reiniciar(): void {
+    this.version++;
     this.numero.set(null);
     this.miTurno.set(null);
     this.confirmando.set(false);
@@ -130,4 +137,61 @@ export class PedirTurno {
     this.errorRefresco.set(null);
     guardar(null);
   }
+
+  private debePolling(): boolean {
+    const estado = this.miTurno()?.estado;
+    return this.numero() !== null && (estado === undefined || estado === 'PENDIENTE');
+  }
+
+  private consultarEstado(): Observable<ResultadoRefresco> {
+    const numero = this.numero();
+    if (numero === null) return EMPTY;
+    const version = this.version;
+    return forkJoin({
+      // Solo un 404 de GET /turnos/{numero} significa que el turno ya no existe.
+      turno: this.api
+        .consultar(numero)
+        .pipe(
+          catchError((err: TurnoError) => (err.status === 404 ? of(null) : throwError(() => err))),
+        ),
+      enEspera: this.api.enEspera(),
+      promedio: this.api.esperaPromedio(),
+    }).pipe(
+      map((datos) => ({ version, numero, ...datos })),
+      catchError((err: TurnoError) => of({ version, error: err })),
+    );
+  }
+
+  private aplicar(resultado: ResultadoRefresco): void {
+    if (resultado.version !== this.version) return;
+    if ('error' in resultado) {
+      this.errorRefresco.set(resultado.error.message);
+      return;
+    }
+    const { numero, turno, enEspera, promedio } = resultado;
+    // El back ya no conoce el número (p. ej. se reinició) → empezar de nuevo.
+    if (turno === null) {
+      this.reiniciar();
+      return;
+    }
+    this.miTurno.set(turno);
+    this.delante.set(
+      Math.max(
+        0,
+        enEspera.findIndex((t) => t.numero === numero),
+      ),
+    );
+    this.promedio.set(promedio.minutos);
+    this.errorRefresco.set(null);
+  }
 }
+
+type ResultadoRefresco =
+  | {
+      version: number;
+      numero: number;
+      turno: Turno | null;
+      enEspera: Turno[];
+      promedio: EsperaPromedio;
+    }
+  | { version: number; error: TurnoError };
