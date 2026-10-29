@@ -29,6 +29,9 @@ Front y back ajustan este contrato aquí antes de programar cualquier cambio.
 | `GET`  | `/turnos/en-espera` | `200` con `Turno[]` en `PENDIENTE`, ordenados por `horaSolicitud` (desempate por `numero`) |
 | `GET`  | `/turnos/actual` | `200` con el último `Turno` atendido · `204` si aún no se ha atendido ninguno |
 | `GET`  | `/turnos/espera-promedio` | `200` con `{ "minutos": 12.2 }` |
+| `GET`  | `/turnos/{numero}` | `200` con el `Turno` (cualquier estado) · `404` si el número no existe |
+
+> `{numero}` es solo dígitos (en Spring: `/turnos/{numero:\d+}`), así no choca con `/turnos/en-espera` ni `/turnos/actual`.
 
 ### Errores
 
