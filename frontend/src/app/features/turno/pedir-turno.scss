@@ -1,0 +1,107 @@
+:host {
+  display: flex;
+  justify-content: center;
+}
+
+.kiosco {
+  width: 100%;
+  max-width: 480px;
+  padding: 2.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  text-align: center;
+}
+
+.banner-error {
+  width: 100%;
+  margin: 0;
+}
+
+.bienvenida h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.5rem;
+}
+
+.ayuda {
+  margin: 0;
+  color: var(--muted);
+}
+
+.btn-grande {
+  width: 100%;
+  padding: 1.25rem;
+  font-size: 1.25rem;
+}
+
+.mi-turno {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+
+  &.atendido app-numero-turno {
+    color: var(--success);
+  }
+}
+
+.etiqueta {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.85rem;
+}
+
+.datos {
+  width: 100%;
+  display: grid;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-radius: var(--radius);
+  background: var(--bg);
+
+  p {
+    margin: 0;
+    color: var(--muted);
+  }
+
+  strong {
+    color: var(--text);
+  }
+}
+
+.confirmacion {
+  width: 100%;
+
+  p {
+    margin: 0 0 0.75rem;
+    font-weight: 500;
+  }
+}
+
+.acciones {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.btn-peligro {
+  background: var(--warning);
+  color: #fff;
+}
+
+.llamado {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--success);
+}
+
+.cancelado {
+  margin: 0;
+  font-weight: 500;
+  color: var(--muted);
+}
