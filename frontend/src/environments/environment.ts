@@ -1,5 +1,6 @@
-// useMock: true mientras el back no esté arriba; con el back en localhost:8080 pasar a false.
+// Por defecto el front habla con el back (ng serve redirige /api a localhost:8080).
+// Para trabajar sin back: npm run start:mock (usa environment.mock.ts).
 export const environment = {
-  useMock: true,
+  useMock: false,
   apiUrl: '/api',
 };

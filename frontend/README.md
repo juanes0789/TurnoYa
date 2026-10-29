@@ -11,22 +11,23 @@ Diseño: [`docs/specs/2026-10-29-front-interfaz-design.md`](../docs/specs/2026-1
 
 ```bash
 npm install          # .npmrc trae legacy-peer-deps (bug de npm 10 con jsdom/vitest)
-npx ng serve         # http://localhost:4200
+npm start            # con el back: http://localhost:4200, /api → http://localhost:8080
+npm run start:mock   # sin back: datos en memoria
 ```
 
-### Mock o back real
+### Con el back
 
-`src/environments/environment.ts`:
+Levantar el back (rama `backend`) y luego `npm start`:
 
-```ts
-export const environment = {
-  useMock: true,   // true: datos en memoria · false: back en localhost:8080
-  apiUrl: '/api',
-};
+```bash
+cd backend/Backend && ./mvnw spring-boot:run     # Java 17, puerto 8080, H2 en memoria con data/turnos_hoy.xlsx
 ```
 
-- **`useMock: true`** — `TurnoMock` arranca con el estado esperado después de cargar `data/turnos_hoy.xlsx`: atendidos 1–5, en espera 6, 8, 9, 10, promedio 12.2 min, próximo número 11. Vive en memoria **por pestaña**: al recargar se reinicia.
-- **`useMock: false`** — `TurnoHttp` llama a `/api/...`; `ng serve` lo redirige a `http://localhost:8080` (`proxy.conf.json`).
+`ng serve` redirige `/api` a `http://localhost:8080` (`proxy.conf.json`). Si el 8080 está ocupado: `PORT=8090 ./mvnw spring-boot:run` y `npx ng serve --proxy-config <archivo con target http://localhost:8090>`.
+
+### Sin back (mock)
+
+`npm run start:mock` usa `src/environments/environment.mock.ts` (`useMock: true`): `TurnoMock` arranca con el estado esperado después de cargar `data/turnos_hoy.xlsx` (atendidos 1–5, en espera 6, 8, 9, 10, promedio 12.2 min, próximo número 11). Vive en memoria **por pestaña**: al recargar se reinicia.
 
 ## Pruebas
 
