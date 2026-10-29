@@ -56,7 +56,8 @@ Dos vistas en Angular que cumplan el reto: una para **pedir turno** y otra para 
 
 - **Personas delante** = cantidad de turnos en `GET /turnos/en-espera` que están antes del mío.
 - **Espera estimada** = personas delante × espera promedio (redondeado a minutos). Es una estimación del front, no la calcula el back.
-- **Le llamaron** = mi número ya no está en espera y `GET /turnos/actual` devuelve mi número (o uno mayor).
+- **Estado de mi turno** = `GET /turnos/{numero}` cada 3 s: `ATENDIDO` → "¡Es tu turno!"; `CANCELADO` → "Tu turno fue cancelado" (también si lo canceló el asesor).
+- El número del cliente se guarda en `sessionStorage`; al recargar la página el kiosco vuelve a consultarlo con `GET /turnos/{numero}` en vez de perderlo. Si responde `404`, vuelve al estado inicial.
 
 ## Vista `/asesor` — Panel del asesor
 
@@ -115,6 +116,7 @@ frontend/src/app/
 - Atendidos 1–5 (actual: 5), en espera 6, 8, 9, 10, promedio 12.2 min, próximo número 11.
 - `siguiente()` con la fila vacía lanza el mismo error que el 409.
 - `cancelar(numero)` solo sobre `PENDIENTE`; si no, el mismo error que el 409 (o 404 si no existe).
+- `consultar(numero)` devuelve el turno en cualquier estado; error 404 si no existe (p. ej. `consultar(99)`).
 - Números nuevos = máximo + 1; nunca reutiliza el 7 ni un número cancelado.
 
 ## Pruebas del front
@@ -127,6 +129,8 @@ frontend/src/app/
 | `cancelar(8)` saca el 8 de la fila; el siguiente pedido sigue siendo un número nuevo | `turno-mock.service.spec` |
 | `cancelar()` de un turno atendido o ya cancelado falla y no cambia nada | `turno-mock.service.spec` |
 | Cancelar desde el panel quita el turno de la lista; desde el kiosco muestra "cancelado" | `asesor.component.spec`, `turno.component.spec` |
+| `consultar(7)` devuelve el 7 `CANCELADO` (el primero del archivo); `consultar(99)` falla con 404 | `turno-mock.service.spec` |
+| El kiosco pasa a "¡Es tu turno!" cuando `consultar()` devuelve `ATENDIDO` | `turno.component.spec` |
 | Botón "Llamar siguiente" deshabilitado con fila vacía | `asesor.component.spec` |
 | Banner visible ante 409 | `asesor.component.spec` |
 | Doble clic en "Pedir turno" solo crea un turno | `turno.component.spec` |
