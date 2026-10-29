@@ -1,16 +1,35 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { MonoTypeOperatorFunction, Observable, catchError, throwError } from 'rxjs';
+import {
+  MonoTypeOperatorFunction,
+  Observable,
+  TimeoutError,
+  catchError,
+  throwError,
+  timeout,
+} from 'rxjs';
 import { environment } from '../../environments/environment';
 import { TurnoApi } from './turno-api';
 import { EsperaPromedio, Turno, TurnoError } from './turno.model';
 
+/** Si el back no responde en este tiempo, se trata como sin conexión. */
+export const TIEMPO_MAXIMO_MS = 8000;
+
 function aTurnoError<T>(): MonoTypeOperatorFunction<T> {
-  return catchError((err: HttpErrorResponse) => {
-    const mensaje =
-      err.error?.mensaje ?? (err.status === 0 ? 'Sin conexión con el servidor' : 'Error inesperado del servidor');
-    return throwError(() => new TurnoError(err.status, mensaje));
-  });
+  return (fuente) =>
+    fuente.pipe(
+      // Un back colgado no responde nunca: tras TIEMPO_MAXIMO_MS se cancela la petición.
+      timeout(TIEMPO_MAXIMO_MS),
+      catchError((err: HttpErrorResponse | TimeoutError) => {
+        const mensaje =
+          err instanceof TimeoutError || err.status === 0
+            ? 'Sin conexión con el servidor'
+            : (err.error?.mensaje ?? 'Error inesperado del servidor');
+        return throwError(
+          () => new TurnoError(err instanceof TimeoutError ? 0 : err.status, mensaje),
+        );
+      }),
+    );
 }
 
 /** Implementación del contrato (docs/api.md) contra el back. */
