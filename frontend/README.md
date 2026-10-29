@@ -1,59 +1,53 @@
-# Turnoya
+# TurnoYa · Front
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.29.
+Angular 21 (standalone, zoneless, signals) · pruebas con Vitest.
 
-## Development server
+- `/turno`: kiosco del cliente (pedir, consultar y cancelar turno).
+- `/asesor`: panel del asesor (a cargo de Juan Felipe).
 
-To start a local development server, run:
+Diseño: [`docs/specs/2026-10-29-front-interfaz-design.md`](../docs/specs/2026-10-29-front-interfaz-design.md) · Contrato: [`docs/api.md`](../docs/api.md)
 
-```bash
-ng serve
-```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## Correr
 
 ```bash
-ng generate component component-name
+npm install          # .npmrc trae legacy-peer-deps (bug de npm 10 con jsdom/vitest)
+npx ng serve         # http://localhost:4200
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+### Mock o back real
+
+`src/environments/environment.ts`:
+
+```ts
+export const environment = {
+  useMock: true,   // true: datos en memoria · false: back en localhost:8080
+  apiUrl: '/api',
+};
+```
+
+- **`useMock: true`** — `TurnoMock` arranca con el estado esperado después de cargar `data/turnos_hoy.xlsx`: atendidos 1–5, en espera 6, 8, 9, 10, promedio 12.2 min, próximo número 11. Vive en memoria **por pestaña**: al recargar se reinicia.
+- **`useMock: false`** — `TurnoHttp` llama a `/api/...`; `ng serve` lo redirige a `http://localhost:8080` (`proxy.conf.json`).
+
+## Pruebas
 
 ```bash
-ng generate --help
+npx ng test --watch=false                                               # todas
+npx ng test --watch=false --include src/app/core/turno-mock.spec.ts     # un archivo
 ```
 
-## Building
+## Estructura
 
-To build the project run:
-
-```bash
-ng build
+```
+src/app/
+├── core/          # Turno, TurnoApi (token TURNO_API), TurnoMock, TurnoHttp
+├── shared/        # header, numero-turno (006)
+└── features/
+    ├── turno/     # /turno — PedirTurno
+    └── asesor/    # /asesor — PanelAsesor (Juan Felipe)
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+Las vistas solo inyectan `TURNO_API`; nunca `TurnoMock` ni `TurnoHttp` directamente.
 
-## Running unit tests
+### `data-testid` del kiosco (para el equipo de pruebas)
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+`pedir`, `mi-turno`, `delante`, `espera`, `cancelar`, `confirmacion`, `confirmar-cancelar`, `descartar-cancelar`, `llamado`, `cancelado`, `otro`, `banner-error`.
