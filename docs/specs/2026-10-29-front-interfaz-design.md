@@ -61,6 +61,8 @@ Dos vistas en Angular que cumplan el reto: una para **pedir turno** y otra para 
 
 ## Vista `/asesor` — Panel del asesor
 
+> **Responsable: Juan Felipe.** El equipo del cliente solo entrega la base compartida (proyecto, `TurnoApi`, mock, HTTP) y deja esta ruta con un placeholder. Este diseño queda como referencia.
+
 ```
 ┌───────────────────┬──────────────────────┐
 │ Atendiendo ahora  │ En espera (4)            │
@@ -91,27 +93,29 @@ La lista y el promedio se refrescan cada 3 s y justo después de llamar al sigui
 ```
 frontend/src/app/
 ├── core/
-│   ├── turno.model.ts          # Turno, EstadoTurno, EsperaPromedio
-│   ├── turno-api.ts            # Interfaz común (token de inyección)
-│   ├── turno-http.service.ts   # Implementación HTTP contra /api
-│   └── turno-mock.service.ts   # Implementación en memoria con los datos del archivo
+│   ├── turno.model.ts          # Turno, EstadoTurno, EsperaPromedio, TurnoError
+│   ├── turno-api.ts            # Interfaz común (token TURNO_API) + RELOJ
+│   ├── turno-http.ts           # Implementación HTTP contra /api
+│   └── turno-mock.ts           # Implementación en memoria con los datos del archivo
 ├── shared/
 │   ├── header/                 # Logo + navegación
 │   └── numero-turno/           # Número formateado 006 (reutilizado)
 ├── features/
-│   ├── turno/                  # Vista /turno
-│   └── asesor/                 # Vista /asesor
+│   ├── turno/pedir-turno.ts    # Vista /turno
+│   └── asesor/panel-asesor.ts  # Vista /asesor
 └── app.routes.ts               # '' → /turno, /turno, /asesor
 ```
 
+Nombres de archivo según la guía de estilo 2025 de Angular (por defecto en Angular 21: sin sufijos `.service`/`.component`).
+
 - Componentes standalone, signals, zoneless, control flow `@if/@for`.
-- `TurnoApi` es un token: `environment.useMock` decide si se inyecta `TurnoHttpService` o `TurnoMockService`. El front avanza sin esperar al back.
+- `TurnoApi` es un token: `environment.useMock` decide si se inyecta `TurnoHttp` o `TurnoMock`. El front avanza sin esperar al back.
 - Polling con `timer(0, 3000)` + `switchMap` → `toSignal`.
 - Proxy `/api` → `http://localhost:8080` en desarrollo.
 
 ## Mock (mientras llega el back)
 
-`TurnoMockService` arranca con el **estado esperado después de la carga** de `docs/api.md` y aplica la misma regla:
+`TurnoMock` arranca con el **estado esperado después de la carga** de `docs/api.md` y aplica la misma regla:
 
 - Atendidos 1–5 (actual: 5), en espera 6, 8, 9, 10, promedio 12.2 min, próximo número 11.
 - `siguiente()` con la fila vacía lanza el mismo error que el 409.
@@ -123,18 +127,18 @@ frontend/src/app/
 
 | Caso | Dónde |
 |---|---|
-| El mock arranca con en espera = [6, 8, 9, 10] y promedio 12.2 | `turno-mock.service.spec` |
-| `siguiente()` atiende en orden 6 → 8 → 9 → 10 y luego falla con fila vacía | `turno-mock.service.spec` |
-| `pedirTurno()` asigna 11, 12… sin repetir | `turno-mock.service.spec` |
-| `cancelar(8)` saca el 8 de la fila; el siguiente pedido sigue siendo un número nuevo | `turno-mock.service.spec` |
-| `cancelar()` de un turno atendido o ya cancelado falla y no cambia nada | `turno-mock.service.spec` |
-| Cancelar desde el panel quita el turno de la lista; desde el kiosco muestra "cancelado" | `asesor.component.spec`, `turno.component.spec` |
-| `consultar(7)` devuelve el 7 `CANCELADO` (el primero del archivo); `consultar(99)` falla con 404 | `turno-mock.service.spec` |
-| El kiosco pasa a "¡Es tu turno!" cuando `consultar()` devuelve `ATENDIDO` | `turno.component.spec` |
-| Botón "Llamar siguiente" deshabilitado con fila vacía | `asesor.component.spec` |
-| Banner visible ante 409 | `asesor.component.spec` |
-| Doble clic en "Pedir turno" solo crea un turno | `turno.component.spec` |
-| Personas delante y espera estimada correctas | `turno.component.spec` |
+| El mock arranca con en espera = [6, 8, 9, 10] y promedio 12.2 | `turno-mock.spec.ts` |
+| `siguiente()` atiende en orden 6 → 8 → 9 → 10 y luego falla con fila vacía | `turno-mock.spec.ts` |
+| `pedirTurno()` asigna 11, 12… sin repetir | `turno-mock.spec.ts` |
+| `cancelar(8)` saca el 8 de la fila; el siguiente pedido sigue siendo un número nuevo | `turno-mock.spec.ts` |
+| `cancelar()` de un turno atendido o ya cancelado falla y no cambia nada | `turno-mock.spec.ts` |
+| Cancelar desde el panel quita el turno de la lista; desde el kiosco muestra "cancelado" | `panel-asesor.spec.ts`, `pedir-turno.spec.ts` |
+| `consultar(7)` devuelve el 7 `CANCELADO` (el primero del archivo); `consultar(99)` falla con 404 | `turno-mock.spec.ts` |
+| El kiosco pasa a "¡Es tu turno!" cuando `consultar()` devuelve `ATENDIDO` | `pedir-turno.spec.ts` |
+| Botón "Llamar siguiente" deshabilitado con fila vacía | `panel-asesor.spec.ts` |
+| Banner visible ante 409 | `panel-asesor.spec.ts` |
+| Doble clic en "Pedir turno" solo crea un turno | `pedir-turno.spec.ts` |
+| Personas delante y espera estimada correctas | `pedir-turno.spec.ts` |
 
 ## Fuera de alcance
 
