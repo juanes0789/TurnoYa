@@ -1,0 +1,72 @@
+<section class="kiosco tarjeta">
+  @if (mensajeError(); as mensaje) {
+    <p class="banner-error" data-testid="banner-error" role="alert">{{ mensaje }}</p>
+  }
+
+  @if (numero() === null) {
+    <div class="bienvenida">
+      <h1>Bienvenido a TurnoYa</h1>
+      <p class="ayuda">Pide tu turno y sigue tu lugar en la fila desde aquí.</p>
+    </div>
+    <button
+      type="button"
+      class="btn btn-primario btn-grande"
+      data-testid="pedir"
+      [disabled]="pidiendo()"
+      (click)="pedir()"
+    >
+      {{ pidiendo() ? 'Asignando…' : 'Pedir turno' }}
+    </button>
+  } @else if (miTurno(); as turno) {
+    <div class="mi-turno" data-testid="mi-turno" [class.atendido]="turno.estado === 'ATENDIDO'">
+      <p class="etiqueta">Tu turno es</p>
+      <app-numero-turno [numero]="turno.numero" tamano="grande" />
+    </div>
+
+    @switch (turno.estado) {
+      @case ('PENDIENTE') {
+        <div class="datos">
+          <p data-testid="delante">Personas delante: <strong>{{ delante() }}</strong></p>
+          <p data-testid="espera">Espera estimada: <strong>~{{ esperaEstimada() }} min</strong></p>
+        </div>
+
+        @if (confirmando()) {
+          <div class="confirmacion" data-testid="confirmacion">
+            <p>¿Seguro? Perderás tu lugar en la fila</p>
+            <div class="acciones">
+              <button type="button" class="btn btn-peligro" data-testid="confirmar-cancelar" (click)="cancelar()">
+                Sí, cancelar
+              </button>
+              <button
+                type="button"
+                class="btn btn-secundario"
+                data-testid="descartar-cancelar"
+                (click)="confirmando.set(false)"
+              >
+                No
+              </button>
+            </div>
+          </div>
+        } @else {
+          <button type="button" class="btn btn-secundario" data-testid="cancelar" (click)="confirmando.set(true)">
+            Cancelar mi turno
+          </button>
+        }
+      }
+      @case ('ATENDIDO') {
+        <p class="llamado" data-testid="llamado" role="status">¡Es tu turno!</p>
+        <button type="button" class="btn btn-secundario" data-testid="otro" (click)="reiniciar()">
+          Pedir otro turno
+        </button>
+      }
+      @case ('CANCELADO') {
+        <p class="cancelado" data-testid="cancelado">Tu turno {{ formatear(turno.numero) }} fue cancelado</p>
+        <button type="button" class="btn btn-primario" data-testid="otro" (click)="reiniciar()">
+          Pedir otro turno
+        </button>
+      }
+    }
+  } @else {
+    <p class="ayuda" data-testid="cargando">Consultando tu turno…</p>
+  }
+</section>
