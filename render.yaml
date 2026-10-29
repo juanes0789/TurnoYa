@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: turnoya-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Backend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/turnos/en-espera
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: TURNOYA_DATA_FILE
+        value: /app/data/turnos_hoy.xlsx
+      - key: DB_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
