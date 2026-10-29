@@ -1,0 +1,42 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.logo {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text);
+  text-decoration: none;
+
+  span {
+    color: var(--accent);
+  }
+}
+
+nav {
+  display: flex;
+  gap: 1.25rem;
+
+  a {
+    color: var(--muted);
+    text-decoration: none;
+    font-weight: 500;
+    padding-bottom: 0.25rem;
+    border-bottom: 2px solid transparent;
+
+    &:hover {
+      color: var(--text);
+    }
+
+    &.activo {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+  }
+}
