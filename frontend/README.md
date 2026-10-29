@@ -50,4 +50,4 @@ Las vistas solo inyectan `TURNO_API`; nunca `TurnoMock` ni `TurnoHttp` directame
 
 ### `data-testid` del kiosco (para el equipo de pruebas)
 
-`pedir`, `mi-turno`, `delante`, `espera`, `cancelar`, `confirmacion`, `confirmar-cancelar`, `descartar-cancelar`, `llamado`, `cancelado`, `otro`, `banner-error`.
+`pedir`, `mi-turno`, `calculando`, `delante`, `espera`, `cancelar`, `confirmacion`, `confirmar-cancelar`, `descartar-cancelar`, `llamado`, `cancelado`, `otro`, `banner-error`.
