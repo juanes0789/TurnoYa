@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { Observable } from 'rxjs';
-import { TurnoHttp } from './turno-http';
+import { TIEMPO_MAXIMO_MS, TurnoHttp } from './turno-http';
 import { Turno, TurnoError } from './turno.model';
 
 const turno = (numero: number): Turno => ({
@@ -17,7 +17,9 @@ describe('TurnoHttp', () => {
   let http: HttpTestingController;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
     api = TestBed.inject(TurnoHttp);
     http = TestBed.inject(HttpTestingController);
   });
@@ -37,7 +39,13 @@ describe('TurnoHttp', () => {
     ['consultar(8)', () => api.consultar(8), 'GET', '/api/turnos/8', turno(8)],
     ['enEspera()', () => api.enEspera(), 'GET', '/api/turnos/en-espera', [turno(6), turno(8)]],
     ['actual()', () => api.actual(), 'GET', '/api/turnos/actual', turno(5)],
-    ['esperaPromedio()', () => api.esperaPromedio(), 'GET', '/api/turnos/espera-promedio', { minutos: 12.2 }],
+    [
+      'esperaPromedio()',
+      () => api.esperaPromedio(),
+      'GET',
+      '/api/turnos/espera-promedio',
+      { minutos: 12.2 },
+    ],
   ] as const)('%s hace %s %s y devuelve el body', (_n, llamar, method, url, body) => {
     const r = capturar<unknown>((llamar as () => Observable<unknown>)());
     http.expectOne({ method, url }).flush(body);
@@ -69,5 +77,22 @@ describe('TurnoHttp', () => {
     const r = capturar(api.consultar(8));
     http.expectOne('/api/turnos/8').flush('boom', { status: 500, statusText: 'Server Error' });
     expect(r.error).toMatchObject({ status: 500, message: 'Error inesperado del servidor' });
+  });
+
+  it('si el back no responde en TIEMPO_MAXIMO_MS cancela la petición y da "Sin conexión con el servidor"', () => {
+    vi.useFakeTimers();
+    try {
+      const r = capturar(api.enEspera());
+      const req = http.expectOne('/api/turnos/en-espera');
+
+      vi.advanceTimersByTime(TIEMPO_MAXIMO_MS - 1);
+      expect(r.error).toBeUndefined();
+      vi.advanceTimersByTime(1);
+
+      expect(r.error).toMatchObject({ status: 0, message: 'Sin conexión con el servidor' });
+      expect(req.cancelled).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

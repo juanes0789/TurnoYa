@@ -58,14 +58,55 @@ describe('PedirTurno', () => {
     expect(el('pedir')).toBeNull();
   });
 
-  it('doble pedir solo crea un turno', async () => {
+  it('doble pedir mientras se asigna solo hace una petición', async () => {
+    const enVuelo = new Subject<Turno>();
+    const pedirTurno = vi.spyOn(mock, 'pedirTurno').mockReturnValue(enVuelo);
     await crear();
-    fixture.componentInstance.pedir();
+
+    await click('pedir');
+    expect(texto('pedir')).toBe('Asignando…');
+    expect(el('pedir')?.hasAttribute('disabled')).toBe(true);
     fixture.componentInstance.pedir();
 
-    let numeros: number[] = [];
-    mock.enEspera().subscribe((t: Turno[]) => (numeros = t.map((x) => x.numero)));
-    expect(numeros).toEqual([6, 8, 9, 10, 11]);
+    expect(pedirTurno).toHaveBeenCalledTimes(1);
+  });
+
+  it('mientras llega el primer refresco no muestra "Personas delante: 0"', async () => {
+    await crear();
+    const primero = new Subject<Turno>();
+    vi.spyOn(mock, 'consultar').mockReturnValueOnce(primero);
+
+    await click('pedir');
+    expect(texto('mi-turno')).toMatch(/^Tu turno es\s*011$/);
+    expect(el('delante')).toBeNull();
+    expect(el('espera')).toBeNull();
+    expect(texto('calculando')).toBe('Calculando tu lugar en la fila…');
+
+    primero.next({
+      numero: 11,
+      horaSolicitud: '2026-10-29T09:00:00',
+      horaAtencion: null,
+      estado: 'PENDIENTE',
+    });
+    primero.complete();
+    await fixture.whenStable();
+    expect(texto('delante')).toBe('Personas delante: 4');
+    expect(el('calculando')).toBeNull();
+  });
+
+  it('mientras cancela muestra "Cancelando…" y no manda otra cancelación', async () => {
+    await crear();
+    await click('pedir');
+    const enVuelo = new Subject<Turno>();
+    const cancelar = vi.spyOn(mock, 'cancelar').mockReturnValue(enVuelo);
+
+    await click('cancelar');
+    await click('confirmar-cancelar');
+    expect(texto('cancelar')).toBe('Cancelando…');
+    expect(el('cancelar')?.hasAttribute('disabled')).toBe(true);
+    fixture.componentInstance.cancelar();
+
+    expect(cancelar).toHaveBeenCalledTimes(1);
   });
 
   it('pasa a "¡Es tu turno!" cuando el asesor lo atiende', async () => {
