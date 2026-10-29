@@ -1,0 +1,20 @@
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+*.iml
+
+# Front (Angular / Node)
+node_modules/
+dist/
+.angular/
+coverage/
+
+# Back (Spring Boot / Maven / Gradle)
+target/
+build/
+.gradle/
+*.log
+
+# Env
+.env
