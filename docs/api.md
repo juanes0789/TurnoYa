@@ -25,6 +25,7 @@ Front y back ajustan este contrato aquí antes de programar cualquier cambio.
 |--------|------|-----------|
 | `POST` | `/turnos` | `201` con el `Turno` creado (`numero` = máximo existente + 1) |
 | `POST` | `/turnos/siguiente` | `200` con el `Turno` atendido · `409` si no hay turnos `PENDIENTE` |
+| `PATCH` | `/turnos/{numero}/cancelar` | `200` con el `Turno` en `CANCELADO` · `404` si el número no existe · `409` si no está `PENDIENTE` |
 | `GET`  | `/turnos/en-espera` | `200` con `Turno[]` en `PENDIENTE`, ordenados por `horaSolicitud` (desempate por `numero`) |
 | `GET`  | `/turnos/actual` | `200` con el último `Turno` atendido · `204` si aún no se ha atendido ninguno |
 | `GET`  | `/turnos/espera-promedio` | `200` con `{ "minutos": 12.2 }` |
@@ -40,6 +41,7 @@ Front y back ajustan este contrato aquí antes de programar cualquier cambio.
 - **Orden de llegada:** se atiende por `horaSolicitud`, nunca por la posición en el archivo ni por el número.
 - **Números únicos:** un número que ya existe no se vuelve a asignar ni a cargar.
 - **Fila vacía:** `POST /turnos/siguiente` sin turnos `PENDIENTE` responde `409` y no cambia nada.
+- **Cancelar:** solo un turno `PENDIENTE` se puede cancelar. Sale de la fila, no cuenta para el promedio y su número no se vuelve a asignar. Cancelar un turno `ATENDIDO` o ya `CANCELADO` responde `409` y no cambia nada.
 - **Espera promedio:** promedio de `horaAtencion - horaSolicitud` de los turnos `ATENDIDO`, en minutos con un decimal. `CANCELADO` y `PENDIENTE` no cuentan. Sin atendidos: `0`.
 
 ## Carga del archivo (`data/turnos_hoy.xlsx`)
