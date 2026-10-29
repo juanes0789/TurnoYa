@@ -54,6 +54,9 @@ export class PedirTurno {
   protected readonly miTurno = signal<Turno | null>(null);
   protected readonly pidiendo = signal(false);
   protected readonly confirmando = signal(false);
+  protected readonly cancelando = signal(false);
+  /** False hasta que llega el primer refresco del turno: evita mostrar "Personas delante: 0" mientras tanto. */
+  protected readonly posicionCargada = signal(false);
   protected readonly delante = signal(0);
   protected readonly promedio = signal(0);
   /** Error de una acción del cliente (pedir, cancelar); se limpia con la siguiente acción. */
@@ -96,6 +99,7 @@ export class PedirTurno {
         this.version++;
         this.numero.set(turno.numero);
         this.miTurno.set(turno);
+        this.posicionCargada.set(false);
         guardar(turno.numero);
         this.refrescar();
       },
@@ -112,13 +116,19 @@ export class PedirTurno {
 
   cancelar(): void {
     const numero = this.numero();
-    if (numero === null) return;
+    if (numero === null || this.cancelando()) return;
     this.version++;
+    this.cancelando.set(true);
     this.confirmando.set(false);
     this.error.set(null);
     this.api.cancelar(numero).subscribe({
-      next: (turno) => this.miTurno.set(turno),
+      next: (turno) => {
+        this.cancelando.set(false);
+        this.version++;
+        this.miTurno.set(turno);
+      },
       error: (err: TurnoError) => {
+        this.cancelando.set(false);
         // Sin conexión es transitorio: va al error de refresco para que se quite al reconectar.
         if (err.status === 0) this.errorRefresco.set(err.message);
         else this.error.set(err.message);
@@ -132,7 +142,10 @@ export class PedirTurno {
     this.numero.set(null);
     this.miTurno.set(null);
     this.confirmando.set(false);
+    this.cancelando.set(false);
+    this.posicionCargada.set(false);
     this.delante.set(0);
+    this.promedio.set(0);
     this.error.set(null);
     this.errorRefresco.set(null);
     guardar(null);
@@ -140,7 +153,12 @@ export class PedirTurno {
 
   private debePolling(): boolean {
     const estado = this.miTurno()?.estado;
-    return this.numero() !== null && (estado === undefined || estado === 'PENDIENTE');
+    // Mientras se cancela no se consulta: un PENDIENTE leído antes del PATCH desharía la cancelación en pantalla.
+    return (
+      this.numero() !== null &&
+      !this.cancelando() &&
+      (estado === undefined || estado === 'PENDIENTE')
+    );
   }
 
   private consultarEstado(): Observable<ResultadoRefresco> {
@@ -182,6 +200,7 @@ export class PedirTurno {
       ),
     );
     this.promedio.set(promedio.minutos);
+    this.posicionCargada.set(true);
     this.errorRefresco.set(null);
   }
 }

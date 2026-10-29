@@ -26,15 +26,28 @@
     @switch (turno.estado) {
       @case ('PENDIENTE') {
         <div class="datos">
-          <p data-testid="delante">Personas delante: <strong>{{ delante() }}</strong></p>
-          <p data-testid="espera">Espera estimada: <strong>~{{ esperaEstimada() }} min</strong></p>
+          @if (posicionCargada()) {
+            <p data-testid="delante">
+              Personas delante: <strong>{{ delante() }}</strong>
+            </p>
+            <p data-testid="espera">
+              Espera estimada: <strong>~{{ esperaEstimada() }} min</strong>
+            </p>
+          } @else {
+            <p data-testid="calculando">Calculando tu lugar en la fila…</p>
+          }
         </div>
 
         @if (confirmando()) {
           <div class="confirmacion" data-testid="confirmacion">
             <p>¿Seguro? Perderás tu lugar en la fila</p>
             <div class="acciones">
-              <button type="button" class="btn btn-peligro" data-testid="confirmar-cancelar" (click)="cancelar()">
+              <button
+                type="button"
+                class="btn btn-peligro"
+                data-testid="confirmar-cancelar"
+                (click)="cancelar()"
+              >
                 Sí, cancelar
               </button>
               <button
@@ -48,8 +61,14 @@
             </div>
           </div>
         } @else {
-          <button type="button" class="btn btn-secundario" data-testid="cancelar" (click)="confirmando.set(true)">
-            Cancelar mi turno
+          <button
+            type="button"
+            class="btn btn-secundario"
+            data-testid="cancelar"
+            [disabled]="cancelando()"
+            (click)="confirmando.set(true)"
+          >
+            {{ cancelando() ? 'Cancelando…' : 'Cancelar mi turno' }}
           </button>
         }
       }
@@ -60,7 +79,9 @@
         </button>
       }
       @case ('CANCELADO') {
-        <p class="cancelado" data-testid="cancelado">Tu turno {{ formatear(turno.numero) }} fue cancelado</p>
+        <p class="cancelado" data-testid="cancelado">
+          Tu turno {{ formatear(turno.numero) }} fue cancelado
+        </p>
         <button type="button" class="btn btn-primario" data-testid="otro" (click)="reiniciar()">
           Pedir otro turno
         </button>
